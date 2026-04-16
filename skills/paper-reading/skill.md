@@ -1,6 +1,6 @@
 ---
 name: paper-analysis-robotics
-description: "机器人学与控制领域论文深度分析工具，专注于 learning-based control。每当用户上传论文 PDF 并要求"分析"、"深度解读"、"帮我看看这篇论文讲了什么"、"详细分析一下"时触发。也包括用户说"解读这篇论文"、"这篇论文的方法是什么"、"帮我理解这篇论文"等场景。"
+description: "机器人学与控制领域论文深度分析工具，专注于 learning-based control。每当用户上传论文 PDF 并要求'分析'、'深度解读'、'帮我看看这篇论文讲了什么'、'详细分析一下'时触发。也包括用户说'解读这篇论文'、'这篇论文的方法是什么'、'帮我理解这篇论文'等场景。"
 ---
 
 # Paper Analysis — 机器人与控制领域论文深度分析
@@ -49,7 +49,7 @@ description: "机器人学与控制领域论文深度分析工具，专注于 le
 
 基于 `PAPER_CORE` 输出完整分析报告。风格：专业严谨，面向同方向的工科研究生。全程中文，专业术语保留英文原文。
 
-严格按照以下 7 个部分输出，不得省略。
+严格按照以下 8 个部分输出，不得省略。
 
 ---
 
@@ -76,36 +76,71 @@ description: "机器人学与控制领域论文深度分析工具，专注于 le
 
 ---
 
-### 2. 方法设计
+### 2. 方法精读
 
-> ⚠️ 核心部分，必须细致——用户可能不会再读原文。
+> ⚠️ 直接对照论文原文的 Methods 部分，保留论文自身的章节结构。逐节展开，不做合并压缩。
 
-**a) 整体 Pipeline**
-输入 → 每个处理步骤（含技术细节）→ 输出。每步说明：做了什么、为什么这样设计。
+按照论文 Methods 的原始小标题逐节分析，每节格式如下：
 
-**b) Policy / Controller 结构**
-- 网络结构是什么（MLP / CNN / Transformer / diffusion / 其他）？
-- 输入特征如何处理（proprioception、视觉特征提取方式等）？
-- 输出是什么（直接 action / residual / 参数化轨迹 / 其他）？
-- 如果有层级结构（high-level planner + low-level controller），分别说明。
+---
 
-**c) 训练方式**
-- RL：reward 函数设计（各项 reward term 的物理意义）、算法选择（PPO / SAC / TD3…）、curriculum 策略
-- IL：demonstration 来源、loss 设计、如何处理 distribution shift
-- Model-based：dynamics model 的形式与训练方式、如何用于规划/辅助 RL
-- 混合方法：各模块如何协同训练
+**`§X.X 原始节标题（英文）`**
 
-**d) 关键公式解释**（如有）
-通俗解释每个关键公式或 loss term 的含义，说明其在控制/学习目标中的作用。
+**这一节在做什么**：1-2 句话说清楚本节的核心目标。
 
-**e) Sim-to-Real 策略**（如适用）
+**技术细节**（可参考以下进行思考，但不局限于此，按实际涉及的维度展开，没有的维度跳过）：
+
+- **数学公式**
+  - 写出本节所有关键公式（使用 LaTeX 或清晰的文字表达）
+  - 逐项解释每个符号：物理含义是什么、取值范围、单位
+  - 说明公式的输入从哪里来、输出去哪里用
+
+- **网络结构**
+  - 整体架构类型：MLP / CNN / Transformer / RNN / Diffusion / 混合
+  - 各子网络的输入维度、隐层维度、输出维度
+  - 编码器设计：如何处理图像（CNN kernel/stride）、proprioception（MLP层数）、点云（PointNet/3D conv）
+  - 是否使用注意力机制：self-attention / cross-attention / 位置编码方式
+  - 时序建模：是否有 LSTM / GRU / causal Transformer / history window
+  - 归一化方式：BatchNorm / LayerNorm / 无
+  - 激活函数选择及原因（ELU / ReLU / Tanh 等）
+  - 多模块间权重是否共享
+
+- **训练方式**
+  - **RL 类**：算法选择（PPO / SAC / TD3 / …）及原因；reward 函数各项 term、权重系数、物理意义；rollout 长度与 update 频率；是否用 curriculum（难度如何递增）；value function 结构
+  - **IL 类**：demonstration 来源（人工 / MPC / 其他 policy）；loss 函数（MSE / NLL / GAIL…）；如何缓解 distribution shift（DAgger / data augmentation / …）；训练数据量
+  - **Model-based 类**：dynamics model 的形式（神经网络 / 解析模型 / 混合）；如何训练；如何用于规划（shooting / CEM / …）或辅助 RL
+  - **通用**：优化器与学习率调度；batch size；训练总步数/轮数；多阶段训练（如 pre-train → fine-tune）；正则化手段（dropout / weight decay / gradient clipping）
+
+- **改进策略**
+  - 相比直接套用 baseline，作者做了哪些针对性修改？
+  - 每个改动是为了解决什么具体问题（过拟合 / 训练不稳定 / sim-to-real gap / 计算效率等）
+
+**解决了什么问题**：这个设计对应 Introduction 里提出的哪个具体痛点？
+
+**在整体框架中的作用**：这一节的输出如何流入下一个模块？去掉这一节整个系统会在哪里断掉？
+
+---
+
+> 如果某节内容极少（如纯 notation 定义），可附在上一节末尾，注明"§X.X 符号定义"。
+
+---
+
+### 3. 方法总结（基于精读提炼）
+
+**a) 整体 Pipeline（速览）**
+用 4-6 步概括整个方法的数据流：输入 → 各处理步骤 → 输出。比方法精读更精简，侧重模块间的逻辑关系。
+
+**b) 核心设计决策**
+从方法精读中提炼出 2-4 个最关键的设计选择，说明"为什么这样选而不是用更简单的方案"。
+
+**c) Sim-to-Real 策略**（如适用）
 - 使用了哪些 domain randomization（动力学参数、外观、延迟等）？
 - 有没有 adaptation 模块（如 RMA 的 estimator、online system ID）？
 - 部署时 policy 是否需要修改？
 
 ---
 
-### 3. 与其他方法对比
+### 4. 与其他方法对比
 
 **a) 本质区别**
 与该领域主流方法（传统控制 / 已有学习方法）最根本的不同在哪里？
@@ -126,7 +161,7 @@ description: "机器人学与控制领域论文深度分析工具，专注于 le
 
 ---
 
-### 4. 实验分析
+### 5. 实验分析
 
 **a) 实验设置**
 - 仿真平台（MuJoCo / Isaac Gym / PyBullet / 其他）？
@@ -149,7 +184,7 @@ description: "机器人学与控制领域论文深度分析工具，专注于 le
 
 ---
 
-### 5. 实际部署考量
+### 6. 实际部署考量
 
 **a) 开源情况**
 代码 / 模型 / 数据集是否开源？链接？
@@ -165,7 +200,7 @@ description: "机器人学与控制领域论文深度分析工具，专注于 le
 
 ---
 
-### 6. 总结与个人思考
+### 7. 总结与个人思考
 
 **a) 一句话核心思想**（≤ 20 字）
 
